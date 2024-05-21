@@ -1,0 +1,5 @@
+<library path="lib/librosneuro_integrator_buffer">
+  <class type="rosneuro::integrator::Buffer" base_class_type="rosneuro::integrator::GenericIntegrator">
+    <description>This is the ROSNeuro Integrator Buffered plugin.</description>
+  </class>
+</library>
