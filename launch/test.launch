@@ -5,14 +5,14 @@
 	<arg name="n_classes" default="2" /> 
 	<arg name="buffer_size" default="49" /> 
 	<arg name="increment" default="1" /> 
-	<arg name="init_val" default="0.5" /> 
+	<arg name="init_val" default='[0.7, 0.4]' /> 
 
 	<node name="integrator" pkg="rosneuro_integrator" type="integrator" output="screen" >
 		<param name="plugin" 	  value="$(arg plugin)"/>
 		<param name="buffer_size" value="$(arg buffer_size)"/>
 		<param name="n_classes" value="$(arg n_classes)"/>
 		<param name="increment" value="$(arg increment)"/>
-		<param name="init_val" value="$(arg init_val)"/>
+		<rosparam param="init_val" subst_value="True">$(arg init_val)</rosparam>
 	</node>
 		
 </launch>

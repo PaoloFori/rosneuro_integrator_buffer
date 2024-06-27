@@ -5,7 +5,6 @@
 #include <ros/ros.h>
 #include <pluginlib/class_list_macros.h>
 #include <dynamic_reconfigure/server.h>
-
 #include "rosneuro_integrator/GenericIntegrator.h"
 #include "rosneuro_integrator_buffer/BufferConfig.h"
 
@@ -30,7 +29,7 @@ class Buffer : public GenericIntegrator {
 		void setclasses(int value);
 		void setincrement(int value);
 		void setbuffersize(int value);
-		void setinitval(float init_val);
+		void setinitval(std::vector<float> init_val);
 
 	private:
 		Eigen::VectorXf uniform_vector(int size, float value);
@@ -42,9 +41,10 @@ class Buffer : public GenericIntegrator {
 		int increment;
 		int n_classes;
 		int buffer_size;
-		float init_val;
+		std::vector<float> init_val;
 		dyncfg_buffer recfg_srv_;
   		dyncfg_buffer::CallbackType recfg_callback_type_;
+		bool first;
 };
 
 PLUGINLIB_EXPORT_CLASS(rosneuro::integrator::Buffer, rosneuro::integrator::GenericIntegrator)

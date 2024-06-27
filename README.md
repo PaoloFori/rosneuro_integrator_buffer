@@ -13,7 +13,7 @@
          
         $\quad b_i^{(t+1)} = b_i^{(t)} + P(c)/\text(buffer\_size)$ if $i=c$  
         $\quad b_i^{(t+1)} = b_i^{(t)} - P(c)/\text(buffer\_size)$ if $i\neq c$
-- ```init_val```: sets the initial value of the buffers after the reset.
+- ```init_val```: sets the initial value for each buffer after the reset.
 
 ## Example usage
 ```xml
@@ -24,14 +24,14 @@
 	<arg name="n_classes" default="2" /> 
 	<arg name="buffer_size" default="49" /> 
 	<arg name="increment" default="1" /> 
-	<arg name="init_val" default="0.5" /> 
+	<arg name="init_val" default="[0.,0.]" /> 
 
 	<node name="integrator" pkg="rosneuro_integrator" type="integrator" output="screen" >
 		<param name="plugin" 	  value="$(arg plugin)"/>
 		<param name="buffer_size" value="$(arg buffer_size)"/>
 		<param name="n_classes" value="$(arg n_classes)"/>
 		<param name="increment" value="$(arg increment)"/>
-		<param name="init_val" value="$(arg init_val)"/>
+		<rosparam param="init_val" subst_value="True">$(arg init_val)</rosparam>
 	</node>
 		
 </launch>
