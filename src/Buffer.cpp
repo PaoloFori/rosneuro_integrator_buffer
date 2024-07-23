@@ -4,7 +4,7 @@ namespace rosneuro {
 	namespace integrator {
 
 Buffer::Buffer(void) : p_nh_("~") {
-	this->setname("buffer");
+	this->setName("buffer");
 }
 
 Buffer::~Buffer(void) {
