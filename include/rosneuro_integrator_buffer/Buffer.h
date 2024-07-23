@@ -26,10 +26,11 @@ class Buffer : public GenericIntegrator {
 		bool configure(void);
 		Eigen::VectorXf apply(const Eigen::VectorXf& input);
 		bool reset(void);
-		void setclasses(int value);
-		void setincrement(int value);
-		void setbuffersize(int value);
-		void setinitval(std::vector<float> init_val);
+		void setClasses(int value);
+		void setIncrement(int value);
+		void setBuffersSize(std::vector<int> value);
+		void setInitVal(std::vector<float> init_val);
+		void setBufferSize(int value, int idx_buffer);
 
 	private:
 		Eigen::VectorXf uniform_vector(int size, float value);
@@ -38,13 +39,13 @@ class Buffer : public GenericIntegrator {
 	private:
 		ros::NodeHandle p_nh_;
 		Eigen::VectorXf data_;
-		int increment;
-		int n_classes;
-		int buffer_size;
-		std::vector<float> init_val;
+		int increment_;
+		int n_classes_;
+		std::vector<int> buffers_size_;
+		std::vector<float> init_val_;
 		dyncfg_buffer recfg_srv_;
   		dyncfg_buffer::CallbackType recfg_callback_type_;
-		bool first;
+		bool first_;
 };
 
 PLUGINLIB_EXPORT_CLASS(rosneuro::integrator::Buffer, rosneuro::integrator::GenericIntegrator)
