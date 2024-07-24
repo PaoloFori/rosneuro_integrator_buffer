@@ -4,7 +4,7 @@ namespace rosneuro {
 	namespace integrator {
 
 Buffer::Buffer(void) : p_nh_("~") {
-	this->setName("buffer");
+	this->setName("integrator_buffer");
 }
 
 Buffer::~Buffer(void) {
@@ -74,7 +74,7 @@ Eigen::VectorXf Buffer::apply(const Eigen::VectorXf& input) {
 	Eigen::Index maxIndex;
 	if (this->first_ == false){
 		this->first_ =true;
-		ROS_INFO("[buffer] first frame received");
+		ROS_INFO("[integrator_buffer] first frame received");
 	}
 	if(input.size() != this->n_classes_) {
 		ROS_WARN("[%s] Input size (%ld) is not equal to declared input size (%d)", this->name().c_str(),input.size(),this->n_classes_); 
@@ -100,6 +100,10 @@ Eigen::VectorXf Buffer::apply(const Eigen::VectorXf& input) {
 	this->data_ = this->data_.cwiseMax(0.0).cwiseMin(1.0);
 
 	return this->data_;
+}
+
+std::vector<float> Buffer::getInitVal(){
+	return this->init_val_;
 }
 
 bool Buffer::reset(void) {

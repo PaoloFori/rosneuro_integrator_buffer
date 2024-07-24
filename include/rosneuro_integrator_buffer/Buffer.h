@@ -31,6 +31,7 @@ class Buffer : public GenericIntegrator {
 		void setBuffersSize(std::vector<int> value);
 		void setInitVal(std::vector<float> init_val);
 		void setBufferSize(int value, int idx_buffer);
+		std::vector<float> getInitVal(void);
 
 	private:
 		Eigen::VectorXf uniform_vector(int size, float value);
