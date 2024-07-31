@@ -17,25 +17,25 @@ bool Buffer::configure(void) {
     std::vector<int> classes;
 
     if(this->p_nh_.getParam("buffers_size", buffers_size) == false) {
-        ROS_ERROR("Parameter 'buffers_size' is mandatory");
+        ROS_ERROR("[%s] Parameter 'buffers_size' is mandatory", this->name().c_str());
         return false;
     }
     if(this->p_nh_.getParam("classes", classes) == false) {
-        ROS_ERROR("Parameter 'classes' is mandatory");
+        ROS_ERROR("[%s] Parameter 'classes' is mandatory", this->name().c_str());
         return false;
     }
     n_classes = classes.size();
 
     std::vector<float> init_percentual;
     if(this->p_nh_.getParam("init_percentual", init_percentual) == false) {
-        ROS_ERROR("Parameter 'init_val' is mandatory");
+        ROS_ERROR("[%s] Parameter 'init_percentual' is mandatory", this->name().c_str());
         return false;
     }
     if(init_percentual.size() != n_classes) {
-        ROS_ERROR("Parameter 'init_percentual' must have the same size of 'classes'");
+        ROS_ERROR("[%s] Parameter 'init_percentual' must have the same size of 'classes'", this->name().c_str());
         return false;
-    }else if(std::accumulate(init_percentual.begin(), init_percentual.end(), 0.0) != 1.0){
-        ROS_ERROR("Parameter 'init_percentual' must sum to 1.0");
+    }else if(static_cast<float>(std::accumulate(init_percentual.begin(), init_percentual.end(), 0.0)) != 1.0f){
+        ROS_ERROR("[%s] Parameter 'init_percentual' must sum to 1.0, it is %f", this->name().c_str(), std::accumulate(init_percentual.begin(), init_percentual.end(), 0.0));
         return false;
     }
 
@@ -78,7 +78,7 @@ Eigen::VectorXf Buffer::apply(const Eigen::VectorXf& input) {
     Eigen::Index maxIndex;
     if (this->first_ == false){
         this->first_ = true;
-        ROS_INFO("[integrator_buffer] first frame received");
+        ROS_INFO("[%s] first frame received", this->name().c_str());
     }
     if(input.size() != this->n_classes_) {
         ROS_ERROR("[%s] Input size (%ld) is not equal to declared input size (%d)", this->name().c_str(),input.size(),this->n_classes_); 
@@ -98,6 +98,7 @@ Eigen::VectorXf Buffer::apply(const Eigen::VectorXf& input) {
 		for(int j = 0; j < this->n_classes_; ++j){
 			if(this->buffer_(i) == this->classes_[j]){
 				prob(j) = prob(j) + 1;
+				break;
 			}
 		}
 	}
@@ -109,47 +110,46 @@ Eigen::VectorXf Buffer::apply(const Eigen::VectorXf& input) {
 
 // TODO: keep the percentage of the classes asked in the init_percentual vector, may be the comment part
 bool Buffer::reset(void) { 
-    this->buffer_ = Eigen::VectorXf(this->buffers_size_);
-    for (int i = 0; i < buffers_size_; ++i) {
-        this->buffer_(i) = this->classes_.at(i % this->n_classes_);
-    }
-
 	this->index_ = 0;
+	if(this->n_classes_ == 2){
+    	this->buffer_ = Eigen::VectorXf(this->buffers_size_);
+    	for (int i = 0; i < buffers_size_; ++i) {
+    	    this->buffer_(i) = this->classes_.at(i % this->n_classes_);
+    	}
+	}else{
+		// compute the percentage of the classes in the buffer
+	    // Calculate the number of occurrences for each class
+	    std::vector<int> counts(this->n_classes_);
+	    for (int i = 0; i < this->n_classes_; ++i) {
+	        counts[i] = static_cast<int>(this->buffers_size_ * this->init_percentual_[i]);
+	    }
 
-    // compute the percentage of the classes in the buffer
-    /*
-    // Calculate the number of occurrences for each class
-    std::vector<int> counts(this->n_classes_);
-    for (int i = 0; i < this->n_classes_; ++i) {
-        counts[i] = static_cast<int>(this->buffers_size_ * this->init_percentual_[i]);
-    }
+	    // Adjust the last count to ensure the sum is exactly `size`
+	    int sum_counts = std::accumulate(counts.begin(), counts.end(), 0);
+	    if (sum_counts != this->buffers_size_) {
+	        counts.back() += (this->buffers_size_ - sum_counts);
+	    }
 
-    // Adjust the last count to ensure the sum is exactly `size`
-    int sum_counts = std::accumulate(counts.begin(), counts.end(), 0);
-    if (sum_counts != this->buffers_size_) {
-        counts.back() += (this->buffers_size_ - sum_counts);
-    }
+	    std::vector<float> temp_vector;
+	    temp_vector.reserve(this->buffers_size_);
 
-    std::vector<float> temp_vector;
-    temp_vector.reserve(this->buffers_size_);
+	    // Fill the temp_vector with the calculated number of each class value
+	    for (int i = 0; i < this->n_classes_; ++i) {
+	        temp_vector.insert(temp_vector.end(), counts[i], this->classes_[i]);
+	    }
 
-    // Fill the temp_vector with the calculated number of each class value
-    for (int i = 0; i < this->n_classes_; ++i) {
-        temp_vector.insert(temp_vector.end(), counts[i], this->classes_[i]);
-    }
+	    // Shuffle the temp_vector
+	    std::random_device rd;
+	    std::mt19937 g(rd());
+	    std::shuffle(temp_vector.begin(), temp_vector.end(), g);
 
-    // Shuffle the temp_vector
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(temp_vector.begin(), temp_vector.end(), g);
-
-    // Transfer the shuffled values to the Eigen vector
-    for (int i = 0; i < this->buffers_size_; ++i) {
-        this->buffer_(i) = temp_vector[i];
-    }
-    std::cout << this->buffer_ << std::endl;
-    */
-
+	    // Transfer the shuffled values to the Eigen vector
+		this->buffer_ = Eigen::VectorXf(this->buffers_size_);
+	    for (int i = 0; i < this->buffers_size_; ++i) {
+	        this->buffer_(i) = temp_vector[i];
+	    }
+	}
+	
     return true;
 }
 
