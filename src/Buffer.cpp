@@ -161,7 +161,9 @@ void Buffer::on_request_reconfigure(rosneuro_config_buffer &config, uint32_t lev
 
 
     if(config.buffer_size != this->buffers_size_){
+        ROS_WARN("[%s] Changing buffer size from %d to %d", this->name().c_str(), this->buffers_size_, config.buffer_size);
         this->setBufferSize(config.buffer_size);
+        this->reset();
     }
 }
 
