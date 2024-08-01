@@ -50,7 +50,6 @@ bool Buffer::configure(void) {
 
     this->reset();
 
-    this->first_ = false;
     return true;
 }
 
@@ -76,10 +75,7 @@ std::vector<float> Buffer::getInitPrecentual(void){
 
 Eigen::VectorXf Buffer::apply(const Eigen::VectorXf& input) {
     Eigen::Index maxIndex;
-    if (this->first_ == false){
-        this->first_ = true;
-        ROS_INFO("[%s] first frame received", this->name().c_str());
-    }
+    ROS_WARN_ONCE("[%s] first frame received", this->name().c_str());
     if(input.size() != this->n_classes_) {
         ROS_ERROR("[%s] Input size (%ld) is not equal to declared input size (%d)", this->name().c_str(),input.size(),this->n_classes_); 
     }
@@ -159,11 +155,10 @@ Eigen::VectorXf Buffer::uniform_vector(int size, float value) {
 
 void Buffer::on_request_reconfigure(rosneuro_config_buffer &config, uint32_t level) {
 
-
     if(config.buffer_size != this->buffers_size_){
         ROS_WARN("[%s] Changing buffer size from %d to %d", this->name().c_str(), this->buffers_size_, config.buffer_size);
         this->setBufferSize(config.buffer_size);
-        this->reset();
+        //this->reset();
     }
 }
 

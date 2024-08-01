@@ -44,7 +44,6 @@ class Buffer : public GenericIntegrator {
         float init_val_;
         dyncfg_buffer recfg_srv_;
         dyncfg_buffer::CallbackType recfg_callback_type_;
-        bool first_;
         int index_;
         std::vector<int> classes_;
         std::vector<float> init_percentual_;
