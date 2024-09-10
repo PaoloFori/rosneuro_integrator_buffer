@@ -13,10 +13,10 @@ Buffer::~Buffer(void) {
 bool Buffer::configure(void) {
 
     int n_classes;
-    int buffers_size;
+    int buffer_size;
     std::vector<int> classes;
 
-    if(this->p_nh_.getParam("buffers_size", buffers_size) == false) {
+    if(this->p_nh_.getParam("buffer_size", buffer_size) == false) {
         ROS_ERROR("[%s] Parameter 'buffers_size' is mandatory", this->name().c_str());
         return false;
     }
@@ -43,7 +43,7 @@ bool Buffer::configure(void) {
     this->recfg_callback_type_ = boost::bind(&Buffer::on_request_reconfigure, this, _1, _2);
     this->recfg_srv_.setCallback(this->recfg_callback_type_);
 
-    this->setBufferSize(buffers_size);
+    this->setBufferSize(buffer_size);
     this->setNClasses(n_classes);
     this->setClasses(classes);
     this->setInitPercentual(init_percentual);
