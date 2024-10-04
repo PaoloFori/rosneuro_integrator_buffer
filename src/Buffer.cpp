@@ -17,7 +17,7 @@ bool Buffer::configure(void) {
     std::vector<int> classes;
 
     if(this->p_nh_.getParam("buffer_size", buffer_size) == false) {
-        ROS_ERROR("[%s] Parameter 'buffers_size' is mandatory", this->name().c_str());
+        ROS_ERROR("[%s] Parameter 'buffer_size' is mandatory", this->name().c_str());
         return false;
     }
     if(this->p_nh_.getParam("classes", classes) == false) {
