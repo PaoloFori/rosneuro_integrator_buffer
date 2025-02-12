@@ -30,6 +30,7 @@ class Buffer : public GenericIntegrator {
         void setThresholds(std::vector<float> value);
         void setBufferSize(int value);
         void setInitPercentual(std::vector<float> init_percentual);
+        void setThsRejection(std::vector<float> ths_rejection);
         std::vector<float> getInitPrecentual(void);
 
     private:
@@ -47,6 +48,7 @@ class Buffer : public GenericIntegrator {
         int index_;
         std::vector<int> classes_;
         std::vector<float> init_percentual_;
+        std::vector<float> ths_rejection_;
 };
 
 PLUGINLIB_EXPORT_CLASS(rosneuro::integrator::Buffer, rosneuro::integrator::GenericIntegrator)

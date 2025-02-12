@@ -70,7 +70,6 @@ add_dependencies(${PROJECT_NAME}
 ##   Install   ##
 #################
 install(TARGETS ${PROJECT_NAME}
-
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
 

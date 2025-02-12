@@ -26,6 +26,7 @@ bool Buffer::configure(void) {
     }
     n_classes = classes.size();
 
+    // initial percentual for the buffer
     std::vector<float> init_percentual;
     if(this->p_nh_.getParam("init_percentual", init_percentual) == false) {
         ROS_ERROR("[%s] Parameter 'init_percentual' is mandatory", this->name().c_str());
@@ -39,6 +40,13 @@ bool Buffer::configure(void) {
         return false;
     }
 
+    // thresholds rejection probabilities
+    std::vector<float> ths_rejection;
+    if(this->p_nh_.getParam("thresholds_rejection", ths_rejection) == false){
+        ROS_ERROR("[%s] Parameter 'thresholds_rejection' is mandatory", this->name().c_str());
+        return false;
+    }
+
     // Bind dynamic reconfigure callback
     this->recfg_callback_type_ = boost::bind(&Buffer::on_request_reconfigure, this, _1, _2);
     this->recfg_srv_.setCallback(this->recfg_callback_type_);
@@ -47,6 +55,7 @@ bool Buffer::configure(void) {
     this->setNClasses(n_classes);
     this->setClasses(classes);
     this->setInitPercentual(init_percentual);
+    this->setThsRejection(ths_rejection);
 
     this->reset();
 
@@ -55,6 +64,10 @@ bool Buffer::configure(void) {
 
 void Buffer::setClasses(std::vector<int> value){
     this->classes_ = value;
+}
+
+void Buffer::setThsRejection(std::vector<float> ths_r){
+    this->ths_rejection_ = ths_r;
 }
 
 void Buffer::setNClasses(int value){
@@ -80,72 +93,74 @@ Eigen::VectorXf Buffer::apply(const Eigen::VectorXf& input) {
         ROS_ERROR("[%s] Input size (%ld) is not equal to declared input size (%d)", this->name().c_str(),input.size(),this->n_classes_); 
     }
 
-	// take the max coefficient of the input vector
+    // take the max vale in the input vector
     input.maxCoeff(&maxIndex);
-	if(this->index_ >= this->buffers_size_){
-		this->index_ = 0;
-	}
-	this->buffer_(this->index_) = this->classes_[maxIndex];
-	this->index_ = this->index_ + 1;
+    if(this->index_ >= this->buffers_size_){
+        this->index_ = 0;
+    }
+    if(input(maxIndex) >= this->ths_rejection_.at(maxIndex)){
+        this->buffer_(this->index_) = this->classes_[maxIndex];
+        this->index_ = this->index_ + 1;
+    }
 
-	// compute the percentage of the classes in the buffer
-	Eigen::VectorXf prob = Eigen::VectorXf::Zero(this->n_classes_);
-	for (int i = 0; i < this->buffers_size_; ++i) {
-		for(int j = 0; j < this->n_classes_; ++j){
-			if(this->buffer_(i) == this->classes_[j]){
-				prob(j) = prob(j) + 1;
-				break;
-			}
-		}
-	}
+    // compute the percentage of the classes in the buffer
+    Eigen::VectorXf prob = Eigen::VectorXf::Zero(this->n_classes_);
+    for (int i = 0; i < this->buffers_size_; ++i) {
+        for(int j = 0; j < this->n_classes_; ++j){
+            if(this->buffer_(i) == this->classes_[j]){
+                prob(j) = prob(j) + 1;
+                break;
+            }
+        }
+    }
 
-	prob = prob / this->buffers_size_;
+    prob = prob / this->buffers_size_;
 
     return prob;
 }
 
-// TODO: keep the percentage of the classes asked in the init_percentual vector, may be the comment part
+// TODO: keep the percentage of the classes asked in the init_percentual vector also for more than 2 classes: the else part
 bool Buffer::reset(void) { 
-	this->index_ = 0;
-	if(this->n_classes_ == 2){
-    	this->buffer_ = Eigen::VectorXf(this->buffers_size_);
-    	for (int i = 0; i < buffers_size_; ++i) {
-    	    this->buffer_(i) = this->classes_.at(i % this->n_classes_);
-    	}
-	}else{
-		// compute the percentage of the classes in the buffer
-	    // Calculate the number of occurrences for each class
-	    std::vector<int> counts(this->n_classes_);
-	    for (int i = 0; i < this->n_classes_; ++i) {
-	        counts[i] = static_cast<int>(this->buffers_size_ * this->init_percentual_[i]);
-	    }
+    this->index_ = 0;
+    if(this->n_classes_ == 2){
+        this->buffer_ = Eigen::VectorXf(this->buffers_size_); // at the end the buffer is full of 730 and 731 successively
+        for (int i = 0; i < this->buffers_size_; ++i) {
+            this->buffer_(i) = this->classes_.at(i % this->n_classes_);
+        }
+    }else{
+        // compute the percentage of the classes in the buffer
+        // Calculate the number of occurrences for each class
+        std::vector<int> counts(this->n_classes_);
+        for (int i = 0; i < this->n_classes_; ++i) {
+            counts[i] = static_cast<int>(this->buffers_size_ * this->init_percentual_[i]);
+        }
 
-	    // Adjust the last count to ensure the sum is exactly `size`
-	    int sum_counts = std::accumulate(counts.begin(), counts.end(), 0);
-	    if (sum_counts != this->buffers_size_) {
-	        counts.back() += (this->buffers_size_ - sum_counts);
-	    }
+        // Adjust the last count to ensure the sum is exactly `size`
+        int sum_counts = std::accumulate(counts.begin(), counts.end(), 0);
+        if (sum_counts != this->buffers_size_) {
+            counts.back() += (this->buffers_size_ - sum_counts);
+        }
 
-	    std::vector<float> temp_vector;
-	    temp_vector.reserve(this->buffers_size_);
+        std::vector<float> temp_vector;
+        temp_vector.reserve(this->buffers_size_);
 
-	    // Fill the temp_vector with the calculated number of each class value
-	    for (int i = 0; i < this->n_classes_; ++i) {
-	        temp_vector.insert(temp_vector.end(), counts[i], this->classes_[i]);
-	    }
+        // Fill the temp_vector with the calculated number of each class value
+        for (int i = 0; i < this->n_classes_; ++i) {
+            temp_vector.insert(temp_vector.end(), counts[i], this->classes_[i]);
+        }
 
-	    // Shuffle the temp_vector
-	    std::random_device rd;
-	    std::mt19937 g(rd());
-	    std::shuffle(temp_vector.begin(), temp_vector.end(), g);
+        // Shuffle the temp_vector
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(temp_vector.begin(), temp_vector.end(), g);
 
-	    // Transfer the shuffled values to the Eigen vector
-		this->buffer_ = Eigen::VectorXf(this->buffers_size_);
-	    for (int i = 0; i < this->buffers_size_; ++i) {
-	        this->buffer_(i) = temp_vector[i];
-	    }
-	}
-	
+        // Transfer the shuffled values to the Eigen vector
+        this->buffer_ = Eigen::VectorXf(this->buffers_size_);
+        for (int i = 0; i < this->buffers_size_; ++i) {
+            this->buffer_(i) = temp_vector[i];
+        }
+    }
+    
     return true;
 }
 
