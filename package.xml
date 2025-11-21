@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>rosneuro_integrator_buffer</name>
+  <version>1.0.0</version>
+  <description>ROSNeuro integrator buffer plugin package</description>
+  <author email="tommaso.cortecchia@studenti.unipd.it">Tommaso Cortecchia</author>
+  <maintainer email="tommaso.cortecchia@studenti.unipd.it">Tommaso Cortecchia</maintainer>
+
+  <license>GPLv3</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>roscpp</depend>
+  <depend>std_msgs</depend>
+  <depend>message_generation</depend>
+
+  <depend>rosneuro_msgs</depend>
+  <depend>rosneuro_integrator</depend>
+  
+  <exec_depend>message_runtime</exec_depend>
+  <build_depend>pluginlib</build_depend>
+  <exec_depend>pluginlib</exec_depend>
+	  
+  <export>
+	  <rosneuro_integrator plugin="${prefix}/plugin_integrator_buffer.xml"/>
+  </export>
+</package>
