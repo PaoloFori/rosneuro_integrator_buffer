@@ -4,7 +4,7 @@ namespace rosneuro {
     namespace integrator {
 
 Buffer::Buffer(void) : p_nh_("~") {
-    this->setName("integrator_buffer");
+    this->setName("buffer");
 }
 
 Buffer::~Buffer(void) {
@@ -12,155 +12,125 @@ Buffer::~Buffer(void) {
 
 bool Buffer::configure(void) {
 
-    int n_classes;
-    int buffer_size;
-    std::vector<int> classes;
+    int increment, n_classes, buffer_size;
 
-    if(this->p_nh_.getParam("buffer_size", buffer_size) == false) {
-        ROS_ERROR("[%s] Parameter 'buffer_size' is mandatory", this->name().c_str());
-        return false;
-    }
-    if(this->p_nh_.getParam("classes", classes) == false) {
-        ROS_ERROR("[%s] Parameter 'classes' is mandatory", this->name().c_str());
-        return false;
-    }
-    n_classes = classes.size();
+    this->p_nh_.param<int>("buffer_size", buffer_size, 48);
+    this->p_nh_.param<int>("n_classes", n_classes, 2);
+    this->p_nh_.param<int>("increment", increment, INCREMENT_HARD);
 
-    // initial percentual for the buffer
-    std::vector<float> init_percentual;
-    if(this->p_nh_.getParam("init_percentual", init_percentual) == false) {
-        ROS_ERROR("[%s] Parameter 'init_percentual' is mandatory", this->name().c_str());
+    std::vector<float> init_val;
+    // Getting init_val
+    if(this->p_nh_.getParam("init_val", init_val) == false) {
+        ROS_ERROR("Parameter 'init_val' is mandatory");
         return false;
-    }
-    if(init_percentual.size() != n_classes) {
-        ROS_ERROR("[%s] Parameter 'init_percentual' must have the same size of 'classes'", this->name().c_str());
+    } 
+    else if(init_val.size() != n_classes) {
+        ROS_ERROR("You must specify an initial value for each class. 'n_classes' is %d but 'init_val' has size %d",n_classes,(int)init_val.size());
         return false;
-    }else if(static_cast<float>(std::accumulate(init_percentual.begin(), init_percentual.end(), 0.0)) != 1.0f){
-        ROS_ERROR("[%s] Parameter 'init_percentual' must sum to 1.0, it is %f", this->name().c_str(), std::accumulate(init_percentual.begin(), init_percentual.end(), 0.0));
-        return false;
-    }
+    }    
 
-    // thresholds rejection probabilities
     std::vector<float> ths_rejection;
-    if(this->p_nh_.getParam("thresholds_rejection", ths_rejection) == false){
-        ROS_ERROR("[%s] Parameter 'thresholds_rejection' is mandatory", this->name().c_str());
+    this->p_nh_.param<std::vector<float>>("thresholds_rejection", ths_rejection, std::vector<float>(2, 0.5f));
+    if(ths_rejection.size() != n_classes){
+        ROS_ERROR("[%s] Parameter 'thresholds_rejection' must have 2 values (2-class problem)", this->name().c_str());
         return false;
     }
+
+    this->setRejection(ths_rejection);
+    this->setbuffersize(buffer_size);
+    this->setincrement(increment);
+    this->setclasses(n_classes);
+    this->setinitval(init_val);
+
+    this->reset();
 
     // Bind dynamic reconfigure callback
     this->recfg_callback_type_ = boost::bind(&Buffer::on_request_reconfigure, this, _1, _2);
     this->recfg_srv_.setCallback(this->recfg_callback_type_);
 
-    this->setBufferSize(buffer_size);
-    this->setNClasses(n_classes);
-    this->setClasses(classes);
-    this->setInitPercentual(init_percentual);
-    this->setThsRejection(ths_rejection);
-
-    this->reset();
-
+    this->first = false;
     return true;
 }
 
-void Buffer::setClasses(std::vector<int> value){
-    this->classes_ = value;
+void Buffer::setRejection(std::vector<float> values) {
+    bool valid_values = true;
+    for(auto val : values){
+        if(val < 0.5f | val > 1.0f){
+            valid_values = false;
+            ROS_ERROR("[%s] Rejection value is not legal (rejection=%f)", this->name().c_str(), val);
+            break;
+        }
+    }
+    if(valid_values){
+        this->rejections_ = values;
+    }
 }
 
-void Buffer::setThsRejection(std::vector<float> ths_r){
-    this->ths_rejection_ = ths_r;
+void Buffer:: setclasses(int value){
+    this->n_classes = value;
 }
 
-void Buffer::setNClasses(int value){
-    this->n_classes_ = value;
+void Buffer:: setincrement(int value){
+    this-> increment = value;
 }
 
-void Buffer::setBufferSize(int value){
-    this-> buffers_size_ = value;
+void Buffer:: setbuffersize(int value){
+    this-> buffer_size = value;
 }
     
-void Buffer::setInitPercentual(std::vector<float> init_percentual){
-    this->init_percentual_ = init_percentual;
+void Buffer:: setinitval(std::vector<float> init_val){
+    this->init_val_=init_val;
 }
 
-std::vector<float> Buffer::getInitPrecentual(void){
-    return this->init_percentual_;
+Eigen::VectorXf Buffer::getData(void) {
+    return this->data_;
 }
 
 Eigen::VectorXf Buffer::apply(const Eigen::VectorXf& input) {
+    float increment;
     Eigen::Index maxIndex;
-    ROS_WARN_ONCE("[%s] first frame received", this->name().c_str());
-    if(input.size() != this->n_classes_) {
-        ROS_ERROR("[%s] Input size (%ld) is not equal to declared input size (%d)", this->name().c_str(),input.size(),this->n_classes_); 
+    if (this->first == false){
+        this->first =true;
+        ROS_INFO("[buffer] first frame received");
+    }
+    if(input.size() != this->n_classes) {
+        ROS_WARN("[%s] Input size (%ld) is not equal to declared input size (%d)", this->name().c_str(),input.size(),this->n_classes); 
+        return this->data_;
     }
 
-    // take the max vale in the input vector
     input.maxCoeff(&maxIndex);
-    if(this->index_ >= this->buffers_size_){
-        this->index_ = 0;
-    }
-    if(input(maxIndex) >= this->ths_rejection_.at(maxIndex)){
-        this->buffer_(this->index_) = this->classes_[maxIndex];
-        this->index_ = this->index_ + 1;
-    }
-
-    // compute the percentage of the classes in the buffer
-    Eigen::VectorXf prob = Eigen::VectorXf::Zero(this->n_classes_);
-    for (int i = 0; i < this->buffers_size_; ++i) {
-        for(int j = 0; j < this->n_classes_; ++j){
-            if(this->buffer_(i) == this->classes_[j]){
-                prob(j) = prob(j) + 1;
-                break;
-            }
+    if(input(maxIndex) > this->rejections_.at(maxIndex)){
+        if(this->increment == INCREMENT_HARD){
+            increment = 1.0F/this-> buffer_size;
         }
+        else if(this->increment == INCREMENT_SOFT){
+            increment = input[maxIndex]/this-> buffer_size;
+        }
+        else{
+            ROS_WARN("Apparently Increment type (%d) is wrong.",this->increment); 
+            return this->data_;
+        }
+
+        //Increment Buffer
+        for (int i=0; i<this->n_classes;i++){
+
+            if (i == (int)maxIndex) 
+                this->data_[i] += increment;  
+            else 
+                this->data_[i] -= increment;  
+        }
+        // [0,1] clipping
+        this->data_ = this->data_.cwiseMax(0.0).cwiseMin(1.0);
     }
 
-    prob = prob / this->buffers_size_;
-
-    return prob;
+    return this->data_;
 }
 
-// TODO: keep the percentage of the classes asked in the init_percentual vector also for more than 2 classes: the else part
-bool Buffer::reset(void) { 
-    this->index_ = 0;
-    if(this->n_classes_ == 2){
-        this->buffer_ = Eigen::VectorXf(this->buffers_size_); // at the end the buffer is full of 730 and 731 successively
-        for (int i = 0; i < this->buffers_size_; ++i) {
-            this->buffer_(i) = this->classes_.at(i % this->n_classes_);
-        }
-    }else{
-        // compute the percentage of the classes in the buffer
-        // Calculate the number of occurrences for each class
-        std::vector<int> counts(this->n_classes_);
-        for (int i = 0; i < this->n_classes_; ++i) {
-            counts[i] = static_cast<int>(this->buffers_size_ * this->init_percentual_[i]);
-        }
-
-        // Adjust the last count to ensure the sum is exactly `size`
-        int sum_counts = std::accumulate(counts.begin(), counts.end(), 0);
-        if (sum_counts != this->buffers_size_) {
-            counts.back() += (this->buffers_size_ - sum_counts);
-        }
-
-        std::vector<float> temp_vector;
-        temp_vector.reserve(this->buffers_size_);
-
-        // Fill the temp_vector with the calculated number of each class value
-        for (int i = 0; i < this->n_classes_; ++i) {
-            temp_vector.insert(temp_vector.end(), counts[i], this->classes_[i]);
-        }
-
-        // Shuffle the temp_vector
-        std::random_device rd;
-        std::mt19937 g(rd());
-        std::shuffle(temp_vector.begin(), temp_vector.end(), g);
-
-        // Transfer the shuffled values to the Eigen vector
-        this->buffer_ = Eigen::VectorXf(this->buffers_size_);
-        for (int i = 0; i < this->buffers_size_; ++i) {
-            this->buffer_(i) = temp_vector[i];
-        }
+bool Buffer::reset(void) {
+    this->data_ = this->uniform_vector(n_classes,0.5);
+    for (int i=0; i<this->n_classes;i++){
+        this->data_[i] = this->init_val_.at(i);
     }
-    
     return true;
 }
 
@@ -168,12 +138,18 @@ Eigen::VectorXf Buffer::uniform_vector(int size, float value) {
     return Eigen::VectorXf::Constant(size, value);
 }
 
+std::vector<float> Buffer::getInitPrecentual(void){
+    return this->init_val_;
+}
+
 void Buffer::on_request_reconfigure(rosneuro_config_buffer &config, uint32_t level) {
 
-    if(config.buffer_size != this->buffers_size_){
-        ROS_WARN("[%s] Changing buffer size from %d to %d", this->name().c_str(), this->buffers_size_, config.buffer_size);
-        this->setBufferSize(config.buffer_size);
-        //this->reset();
+    if( config.increment != this->increment) {
+        this->setincrement(config.increment);
+    }
+
+    if( config.buffer_size != this->buffer_size) {
+        this->setbuffersize(config.buffer_size);
     }
 }
 

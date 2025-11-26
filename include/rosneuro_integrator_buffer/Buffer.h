@@ -3,12 +3,13 @@
 
 #include <Eigen/Dense>
 #include <ros/ros.h>
-#include <numeric>
-#include <random>
 #include <pluginlib/class_list_macros.h>
 #include <dynamic_reconfigure/server.h>
 #include "rosneuro_integrator/GenericIntegrator.h"
 #include "rosneuro_integrator_buffer/BufferConfig.h"
+
+#define INCREMENT_HARD 0
+#define INCREMENT_SOFT 1
 
 namespace rosneuro {
     namespace integrator {
@@ -25,12 +26,12 @@ class Buffer : public GenericIntegrator {
         bool configure(void);
         Eigen::VectorXf apply(const Eigen::VectorXf& input);
         bool reset(void);
-        void setNClasses(int value);
-        void setClasses(std::vector<int> value);
-        void setThresholds(std::vector<float> value);
-        void setBufferSize(int value);
-        void setInitPercentual(std::vector<float> init_percentual);
-        void setThsRejection(std::vector<float> ths_rejection);
+        void setclasses(int value);
+        void setincrement(int value);
+        void setbuffersize(int value);
+        void setinitval(std::vector<float> init_val);
+        void setRejection(std::vector<float> values);
+        Eigen::VectorXf getData(void);
         std::vector<float> getInitPrecentual(void);
 
     private:
@@ -39,16 +40,15 @@ class Buffer : public GenericIntegrator {
 
     private:
         ros::NodeHandle p_nh_;
-		Eigen::VectorXf buffer_;
-        int n_classes_;
-        int buffers_size_;
-        float init_val_;
+        Eigen::VectorXf data_;
+        int increment;
+        int n_classes;
+        int buffer_size;
+        std::vector<float> init_val_;
+        std::vector<float> rejections_;
         dyncfg_buffer recfg_srv_;
         dyncfg_buffer::CallbackType recfg_callback_type_;
-        int index_;
-        std::vector<int> classes_;
-        std::vector<float> init_percentual_;
-        std::vector<float> ths_rejection_;
+        bool first;
 };
 
 PLUGINLIB_EXPORT_CLASS(rosneuro::integrator::Buffer, rosneuro::integrator::GenericIntegrator)
