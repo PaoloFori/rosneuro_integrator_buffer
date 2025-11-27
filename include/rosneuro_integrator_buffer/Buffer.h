@@ -48,7 +48,6 @@ class Buffer : public GenericIntegrator {
         std::vector<float> rejections_;
         dyncfg_buffer recfg_srv_;
         dyncfg_buffer::CallbackType recfg_callback_type_;
-        bool first;
 };
 
 PLUGINLIB_EXPORT_CLASS(rosneuro::integrator::Buffer, rosneuro::integrator::GenericIntegrator)

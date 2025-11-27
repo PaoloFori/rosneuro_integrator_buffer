@@ -14,7 +14,7 @@ bool Buffer::configure(void) {
 
     int increment, n_classes, buffer_size;
 
-    this->p_nh_.param<int>("buffer_size", buffer_size, 48);
+    this->p_nh_.param<int>("buffer_size", buffer_size, 64);
     this->p_nh_.param<int>("n_classes", n_classes, 2);
     this->p_nh_.param<int>("increment", increment, INCREMENT_HARD);
 
@@ -36,6 +36,10 @@ bool Buffer::configure(void) {
         return false;
     }
 
+    // Bind dynamic reconfigure callback
+    this->recfg_callback_type_ = boost::bind(&Buffer::on_request_reconfigure, this, _1, _2);
+    this->recfg_srv_.setCallback(this->recfg_callback_type_);
+
     this->setRejection(ths_rejection);
     this->setbuffersize(buffer_size);
     this->setincrement(increment);
@@ -44,11 +48,6 @@ bool Buffer::configure(void) {
 
     this->reset();
 
-    // Bind dynamic reconfigure callback
-    this->recfg_callback_type_ = boost::bind(&Buffer::on_request_reconfigure, this, _1, _2);
-    this->recfg_srv_.setCallback(this->recfg_callback_type_);
-
-    this->first = false;
     return true;
 }
 
@@ -76,6 +75,7 @@ void Buffer:: setincrement(int value){
 
 void Buffer:: setbuffersize(int value){
     this-> buffer_size = value;
+    std::cout << "Buffer size set to " << this-> buffer_size << std::endl;
 }
     
 void Buffer:: setinitval(std::vector<float> init_val){
@@ -89,10 +89,6 @@ Eigen::VectorXf Buffer::getData(void) {
 Eigen::VectorXf Buffer::apply(const Eigen::VectorXf& input) {
     float increment;
     Eigen::Index maxIndex;
-    if (this->first == false){
-        this->first =true;
-        ROS_INFO("[buffer] first frame received");
-    }
     if(input.size() != this->n_classes) {
         ROS_WARN("[%s] Input size (%ld) is not equal to declared input size (%d)", this->name().c_str(),input.size(),this->n_classes); 
         return this->data_;
