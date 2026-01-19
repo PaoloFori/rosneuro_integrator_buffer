@@ -41,6 +41,7 @@ class Buffer : public GenericIntegrator {
     private:
         ros::NodeHandle p_nh_;
         Eigen::VectorXf data_;
+        float k_gain_;
         int increment;
         int n_classes;
         int buffer_size;

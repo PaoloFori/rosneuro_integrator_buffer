@@ -16,7 +16,8 @@ bool Buffer::configure(void) {
 
     this->p_nh_.param<int>("buffer_size", buffer_size, 64);
     this->p_nh_.param<int>("n_classes", n_classes, 2);
-    this->p_nh_.param<int>("increment", increment, INCREMENT_HARD);
+    this->p_nh_.param<int>("increment", increment, INCREMENT_SOFT);
+    this->p_nh_.param<float>("k_gain", this->k_gain_, 2.5f);
 
     std::vector<float> init_val;
     // Getting init_val
@@ -100,7 +101,13 @@ Eigen::VectorXf Buffer::apply(const Eigen::VectorXf& input) {
             increment = 1.0F/this-> buffer_size;
         }
         else if(this->increment == INCREMENT_SOFT){
-            increment = input[maxIndex]/this-> buffer_size;
+            float p_max = input(maxIndex);
+            float velocity_factor = std::abs(p_max - 0.5f) * 2.0f * this->k_gain_;
+            if(velocity_factor > 1.0f) velocity_factor = 1.0f;
+            float base_step = 1.0f / (float)this->buffer_size;
+            increment = base_step * velocity_factor;
+
+            //increment = input[maxIndex]/this-> buffer_size;
         }
         else{
             ROS_WARN("Apparently Increment type (%d) is wrong.",this->increment); 
