@@ -107,7 +107,7 @@ Eigen::VectorXf Buffer::apply(const Eigen::VectorXf& input) {
             float base_step = 1.0f / (float)this->buffer_size;
             increment = base_step * velocity_factor;
 
-            //increment = input[maxIndex]/this-> buffer_size;
+            // increment = input[maxIndex]/this-> buffer_size;
         }
         else{
             ROS_WARN("Apparently Increment type (%d) is wrong.",this->increment); 
