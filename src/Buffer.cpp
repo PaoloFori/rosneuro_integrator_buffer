@@ -20,7 +20,6 @@ bool Buffer::configure(void) {
     this->p_nh_.param<float>("k_gain", this->k_gain_, 2.5f);
 
     std::vector<float> init_val;
-    // Getting init_val
     if(this->p_nh_.getParam("init_val", init_val) == false) {
         ROS_ERROR("Parameter 'init_val' is mandatory");
         return false;
@@ -42,10 +41,10 @@ bool Buffer::configure(void) {
     this->recfg_srv_.setCallback(this->recfg_callback_type_);
 
     this->setRejection(ths_rejection);
-    this->setbuffersize(buffer_size);
-    this->setincrement(increment);
-    this->setclasses(n_classes);
-    this->setinitval(init_val);
+    this->setBufferSize(buffer_size);
+    this->setIncrement(increment);
+    this->setClasses(n_classes);
+    this->setInitVal(init_val);
 
     this->reset();
 
@@ -66,20 +65,20 @@ void Buffer::setRejection(std::vector<float> values) {
     }
 }
 
-void Buffer:: setclasses(int value){
+void Buffer:: setClasses(int value){
     this->n_classes = value;
 }
 
-void Buffer:: setincrement(int value){
+void Buffer:: setIncrement(int value){
     this-> increment = value;
 }
 
-void Buffer:: setbuffersize(int value){
+void Buffer:: setBufferSize(int value){
     this-> buffer_size = value;
     std::cout << "Buffer size set to " << this-> buffer_size << std::endl;
 }
     
-void Buffer:: setinitval(std::vector<float> init_val){
+void Buffer:: setInitVal(std::vector<float> init_val){
     this->init_val_=init_val;
 }
 
@@ -130,15 +129,11 @@ Eigen::VectorXf Buffer::apply(const Eigen::VectorXf& input) {
 }
 
 bool Buffer::reset(void) {
-    this->data_ = this->uniform_vector(n_classes,0.5);
+    this->data_ = Eigen::VectorXf::Constant(this->n_classes, 0.5);
     for (int i=0; i<this->n_classes;i++){
         this->data_[i] = this->init_val_.at(i);
     }
     return true;
-}
-
-Eigen::VectorXf Buffer::uniform_vector(int size, float value) {
-    return Eigen::VectorXf::Constant(size, value);
 }
 
 std::vector<float> Buffer::getInitPrecentual(void){
@@ -148,11 +143,11 @@ std::vector<float> Buffer::getInitPrecentual(void){
 void Buffer::on_request_reconfigure(rosneuro_config_buffer &config, uint32_t level) {
 
     if( config.increment != this->increment) {
-        this->setincrement(config.increment);
+        this->setIncrement(config.increment);
     }
 
     if( config.buffer_size != this->buffer_size) {
-        this->setbuffersize(config.buffer_size);
+        this->setBufferSize(config.buffer_size);
     }
 }
 

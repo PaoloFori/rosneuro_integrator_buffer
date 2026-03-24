@@ -26,16 +26,15 @@ class Buffer : public GenericIntegrator {
         bool configure(void);
         Eigen::VectorXf apply(const Eigen::VectorXf& input);
         bool reset(void);
-        void setclasses(int value);
-        void setincrement(int value);
-        void setbuffersize(int value);
-        void setinitval(std::vector<float> init_val);
+        void setClasses(int value);
+        void setIncrement(int value);
+        void setBufferSize(int value);
+        void setInitVal(std::vector<float> init_val);
         void setRejection(std::vector<float> values);
         Eigen::VectorXf getData(void);
         std::vector<float> getInitPrecentual(void);
 
     private:
-        Eigen::VectorXf uniform_vector(int size, float value);
         void on_request_reconfigure(rosneuro_config_buffer &config, uint32_t level);
 
     private:
