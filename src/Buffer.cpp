@@ -4,7 +4,7 @@ namespace rosneuro {
     namespace integrator {
 
 Buffer::Buffer(void) : p_nh_("~") {
-    this->setName("buffer");
+    this->setName("Integrator Buffer");
 }
 
 Buffer::~Buffer(void) {
@@ -12,6 +12,11 @@ Buffer::~Buffer(void) {
 
 bool Buffer::configure(void) {
 
+    // Bind dynamic reconfigure callback
+    this->recfg_callback_type_ = boost::bind(&Buffer::on_request_reconfigure, this, _1, _2);
+    this->recfg_srv_.setCallback(this->recfg_callback_type_);
+
+    // Getting parameters from launcher file
     int increment, n_classes, buffer_size;
 
     this->p_nh_.param<int>("buffer_size", buffer_size, 64);
@@ -20,25 +25,18 @@ bool Buffer::configure(void) {
     this->p_nh_.param<float>("k_gain", this->k_gain_, 2.5f);
 
     std::vector<float> init_val;
-    if(this->p_nh_.getParam("init_val", init_val) == false) {
-        ROS_ERROR("Parameter 'init_val' is mandatory");
-        return false;
-    } 
-    else if(init_val.size() != n_classes) {
+    this->p_nh_.param<std::vector<float>>("init_val", init_val, std::vector<float>(2, 1.0/n_classes));
+    if(init_val.size() != n_classes) {
         ROS_ERROR("You must specify an initial value for each class. 'n_classes' is %d but 'init_val' has size %d",n_classes,(int)init_val.size());
         return false;
     }    
 
     std::vector<float> ths_rejection;
-    this->p_nh_.param<std::vector<float>>("thresholds_rejection", ths_rejection, std::vector<float>(2, 0.5f));
+    this->p_nh_.param<std::vector<float>>("thresholds_rejection", ths_rejection, std::vector<float>(2, 1.0/n_classes));
     if(ths_rejection.size() != n_classes){
         ROS_ERROR("[%s] Parameter 'thresholds_rejection' must have 2 values (2-class problem)", this->name().c_str());
         return false;
     }
-
-    // Bind dynamic reconfigure callback
-    this->recfg_callback_type_ = boost::bind(&Buffer::on_request_reconfigure, this, _1, _2);
-    this->recfg_srv_.setCallback(this->recfg_callback_type_);
 
     this->setRejection(ths_rejection);
     this->setBufferSize(buffer_size);
@@ -75,7 +73,6 @@ void Buffer:: setIncrement(int value){
 
 void Buffer:: setBufferSize(int value){
     this-> buffer_size = value;
-    std::cout << "Buffer size set to " << this-> buffer_size << std::endl;
 }
     
 void Buffer:: setInitVal(std::vector<float> init_val){
