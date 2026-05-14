@@ -52,7 +52,7 @@ bool Buffer::configure(void) {
 void Buffer::setRejection(std::vector<float> values) {
     bool valid_values = true;
     for(auto val : values){
-        if(val < 0.5f | val > 1.0f){
+        if(val < 0.5f || val > 1.0f){
             valid_values = false;
             ROS_ERROR("[%s] Rejection value is not legal (rejection=%f)", this->name().c_str(), val);
             break;
