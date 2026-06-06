@@ -40,6 +40,7 @@ class Buffer : public GenericIntegrator {
     private:
         ros::NodeHandle p_nh_;
         Eigen::VectorXf data_;
+        Eigen::VectorXd data_d_;   // double-precision shadow — avoids float32 accumulation
         float k_gain_;
         int increment;
         int n_classes;

@@ -84,52 +84,51 @@ Eigen::VectorXf Buffer::getData(void) {
 }
 
 Eigen::VectorXf Buffer::apply(const Eigen::VectorXf& input) {
-    float increment;
+    double increment;
     Eigen::Index maxIndex;
     if(input.size() != this->n_classes) {
-        ROS_WARN("[%s] Input size (%ld) is not equal to declared input size (%d)", this->name().c_str(),input.size(),this->n_classes); 
+        ROS_WARN("[%s] Input size (%ld) is not equal to declared input size (%d)", this->name().c_str(),input.size(),this->n_classes);
         return this->data_;
     }
 
     input.maxCoeff(&maxIndex);
     if(input(maxIndex) > this->rejections_.at(maxIndex)){
         if(this->increment == INCREMENT_HARD){
-            increment = 1.0F/this-> buffer_size;
+            increment = 1.0 / this->buffer_size;
         }
         else if(this->increment == INCREMENT_SOFT){
-            float p_max = input(maxIndex);
-            float velocity_factor = std::abs(p_max - 0.5f) * 2.0f * this->k_gain_;
-            if(velocity_factor > 1.0f) velocity_factor = 1.0f;
-            float base_step = 1.0f / (float)this->buffer_size;
+            double p_max = static_cast<double>(input(maxIndex));
+            double velocity_factor = std::abs(p_max - 0.5) * 2.0 * static_cast<double>(this->k_gain_);
+            if(velocity_factor > 1.0) velocity_factor = 1.0;
+            double base_step = 1.0 / static_cast<double>(this->buffer_size);
             increment = base_step * velocity_factor;
-
-            // increment = input[maxIndex]/this-> buffer_size;
         }
         else{
-            ROS_WARN("Apparently Increment type (%d) is wrong.",this->increment); 
+            ROS_WARN("Apparently Increment type (%d) is wrong.",this->increment);
             return this->data_;
         }
 
-        //Increment Buffer
+        //Increment Buffer (in double to avoid float32 accumulation drift)
         for (int i=0; i<this->n_classes;i++){
-
-            if (i == (int)maxIndex) 
-                this->data_[i] += increment;  
-            else 
-                this->data_[i] -= increment;  
+            if (i == (int)maxIndex)
+                this->data_d_[i] += increment;
+            else
+                this->data_d_[i] -= increment;
         }
         // [0,1] clipping
-        this->data_ = this->data_.cwiseMax(0.0).cwiseMin(1.0);
+        this->data_d_ = this->data_d_.cwiseMax(0.0).cwiseMin(1.0);
+        this->data_ = this->data_d_.cast<float>();
     }
 
     return this->data_;
 }
 
 bool Buffer::reset(void) {
-    this->data_ = Eigen::VectorXf::Constant(this->n_classes, 0.5);
+    this->data_d_ = Eigen::VectorXd::Constant(this->n_classes, 0.5);
     for (int i=0; i<this->n_classes;i++){
-        this->data_[i] = this->init_val_.at(i);
+        this->data_d_[i] = static_cast<double>(this->init_val_.at(i));
     }
+    this->data_ = this->data_d_.cast<float>();
     return true;
 }
 
